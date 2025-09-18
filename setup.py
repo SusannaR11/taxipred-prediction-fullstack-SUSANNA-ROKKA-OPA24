@@ -15,3 +15,5 @@ setup(
     package_data={"taxipred": ["data/*.csv"]},
     packages=find_packages(),
 )
+
+# uv pip install -e .

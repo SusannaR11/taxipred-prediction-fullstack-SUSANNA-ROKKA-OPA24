@@ -1,17 +1,27 @@
 from taxipred.utils.constants import TAXI_CSV_PATH
+from pathlib import Path
 import pandas as pd
 import json
 import joblib
 from pydantic import BaseModel, Field
 
+CSV_PATH = TAXI_CSV_PATH / "taxi_trip_pricing.csv"
 
 class TaxiData:
-    def __init__(self):
-        self.df = pd.read_csv(TAXI_CSV_PATH)
+    def __init__(self, csv_path: Path = CSV_PATH):
+        try:
+            self.df = pd.read_csv(csv_path)
+        except FileNotFoundError:
+            self.df = pd.DataFrame([
+                {"Trip_Distance_km": 5.0, "Trip_Price": 12.5},
+                {"Trip_Distance_km": 12.3, "Trip_Price": 28.9},
+            ])
+
 
     def to_json(self):
-        return json.loads(self.df.to_json(orient = "records"))
+        return self.df.to_dict(orient = "records")
     
+# request/ response schemas 
 class FareRequest(BaseModel):
     Trip_Distance_km: float = Field(..., ge=0.1) # '....' =required user input
     Trip_Duration_Minutes: float = Field(..., ge=1.0)
@@ -29,6 +39,9 @@ class FareRequest(BaseModel):
     IsDayUnknown: int = Field(..., ge=0, le=1)
     Traffic_Conditions_Num: int= Field(..., ge=0, le=3)
     Time_of_Day_Num: int=Field(..., ge=0, le=4)
+
+class PredictionOutput(BaseModel):
+    predicted_price: int
 
 class TaxiPricePredictor:
     def __init__(self, model_path: str):
@@ -83,3 +96,8 @@ class TaxiPriceBI:
     def top_fare_outliers(self, n=5):
         return self.df.nlargest(n, "Trip_Price").to_dict(orient="records")
 
+
+
+if __name__ == "__main__":
+    data = TaxiData()
+    print(data.to_json())

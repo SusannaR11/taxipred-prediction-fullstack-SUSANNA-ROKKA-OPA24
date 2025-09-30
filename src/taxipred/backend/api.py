@@ -1,18 +1,20 @@
 from fastapi import FastAPI
-from taxipred.backend.data_processing import TaxiData
+import pandas as pd
+from taxipred.backend.data_processing import TaxiData # FareRequest, PredictionOutput
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
-#from .data_processing import ()
 
 app = FastAPI()
 
 taxi_data = TaxiData()
 
-@app.get("/taxi/")
+@app.get("/api/taxi/")
 async def read_taxi_data():
     return taxi_data.to_json()
 
-@app.get("/taxi/bi/opportunities")
-async def opportunities():
-    return opportunities.to_json()
+#@app.get("api/taxi/bi/")
+#async def bi_opportunities():
+#    return bi_opportunities.to_json()
+
+

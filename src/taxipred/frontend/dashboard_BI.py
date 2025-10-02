@@ -1,14 +1,20 @@
-import streamlit as st
+import streamlit as st, requests
 from streamlit_option_menu import option_menu
-from taxipred.utils.helpers import read_api_endpoint #post_api_endpoint
+from taxipred.utils.helpers import read_api_endpoint, post_api_endpoint
 from taxipred.utils.helpers import to_is_weekend, to_day_label, divide_time_of_day, is_business_hour
 import pandas as pd
 from taxipred.backend.data_processing import TaxiPriceBI, FareRequest, TaxiPricePredictor
 from datetime import date, datetime
 from taxipred.utils.constants import IMG_PATH
+from streamlit_geolocation import streamlit_geolocation
+from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
 
+@st.cache_resource
+def get_geolocator():
+    return Nominatim(user_agent="taxikollen")
 
-data = read_api_endpoint("api/taxi")
+data = read_api_endpoint("/api/taxi")
 
 def show_home():
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -18,7 +24,7 @@ def show_home():
     """
     <div style="text-align:center;">
         <h1 style="margin-bottom:5px;">RESEKOLLEN AB</h1>
-        <p style="margin-top:0; font-size:20px;">– din restjänst för alla tillfällen –</p>
+        <p style="margin-top:0; font-size:20px;">– din resetjänst för alla tillfällen –</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -29,30 +35,76 @@ def show_home():
 def show_taxikollen():
     st.title("Taxikollen")
     st.markdown("##### Här väljer du dina resdetaljer. ")
-    st.markdown("##### Klicka sedan på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
-    travel_date = st.date_input("Välj resdatum: ", value=date.today())
-    default_time = datetime.now().time().replace(second=0, microsecond=0)
-    travel_time = st.time_input("Välj klockslag: ", value=default_time)
-    travel_passenger = st.number_input("Välj antal resenärer: ", min_value=1, max_value=6, value=1, step=1)
+    st.markdown("##### Klicka på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
 
-    if st.button("Predict Taxi Price"):
-        day_label = to_day_label(travel_date)
-        is_weekend = to_is_weekend(travel_date)
-        tod_label, tod_num = divide_time_of_day(travel_time)
-        business_hour = is_business_hour(travel_time)
+# ----- GPS + Destination ----------------
+    st.markdown("Startpunkt")
+    if st.button("Använd min plats"):
+        loc = streamlit_geolocation()
+        if loc and "lat" in loc and "lon" in loc:
+            lat, lon = loc["lat"], loc["lon"]
+            addr= get_geolocator.reverse((lat, lon), language="sv").address
+            st.session_state.start_latlon = (lat, lon)
+            st.session_state.start_addr = addr
+            st.success(f"Hittade positionen: {addr}")
+        else:
+            st.warning("Kunde inte hämta plats.Tillåt platsedelning i webbläsaren eller skriv in address.")
+            
+    start_addr = st.text_input("Reser från: ", value=st.session_state.get("start_addr", ""))
+    dest_text = st.text_input("Destination (adress /postnr / ort)")
+    if "start_latlon" in st.session_state:
+        st.map(data=[{"lat": st.session_state.start_latlon[0],
+                 "lon": st.session_state.start_latlon[1]}])
 
+# ------ Form with user input (date/time is used in BI module) -----
+    with st.form("data"):
+        travel_date = st.date_input("Välj resdatum: ", value=date.today())
+        default_time = datetime.now().time().replace(second=0, microsecond=0)
+        travel_time = st.time_input("Välj klockslag: ", value=default_time)
+        travel_passenger = st.number_input("Välj antal resenärer: ", min_value=1, max_value=6, value=1, step=1)
+
+        submitted = st.form_submit_button("Predict Taxi Price")
+
+#--------- Submit: geocode destination, calculate distance, call API -----
+    if submitted:
+        if "start_latlon" not in st.session_state:
+            st.error("Saknar startpunkt. Klicka 'Använd min plats' först.")
+            return
+        if not dest_text.strip():
+            st.error("Ange destination.")
+            return 
+        
+        place= get_geolocator().geocode(dest_text, language="sv", timeout=10)
+        if not place:
+            st.warning("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
+            return 
+        
+        start= st.session_state.start_latlon
+        end = (place.latitude, place.longitude)
+        km = geodesic(start, end).km
+        st.info(f"Avstånd (fågelvägen): {km:.2f} km")
+
+#-------- Payload to API ---------------
         payload = {
-            #     "Trip_Distance_km": Trip_Distance_km,
-            #     "Day_of_Week": Day_of_Week,
-            #     "Time_of_Day": Time_of_Day,
-            #     "Passenger_Count": Passenger_Count
-            #
-            "IsWeekend": is_weekend,
-            "Time_of_Day": tod_label,
-            "Time_of_Day_Num": tod_num,
-            "IsBusinessHour": business_hour,
-            "Passenger_Count": int(travel_passenger)
-        }
+            "Trip_Distance_km": float(km),
+            "Passenger_Count": float(travel_passenger),
+            #"Base_Fare": float = Field(..., ge=0.0),
+            #"Per_Km_Rate": float = Field(..., ge=0.0),
+            #"Per_Minute_Rate": float = Field(..., ge=0.0),
+            #"Trip_Duration_Minutes": float = Field(..., ge=1.0),
+            }
+        response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
+        predicted_price = response.json().get("predicted_price")
+
+        st.markdown(f"Predicted price: {predicted_price}")
+
+
+        # BI-only features -----------
+        # day_label = to_day_label(travel_date)
+        # is_weekend = to_is_weekend(travel_date)
+        # tod_label, tod_num = divide_time_of_day(travel_time)
+        # business_hour = is_business_hour(travel_time)
+    
 
     #response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
     #predicted_price = response.json().get("predicted_price")
@@ -87,6 +139,15 @@ with st.sidebar:
             },
         }
     )
+
+# def get_ip_location():
+#     try:
+#         ip_data = requests.get("https://ipapi.co/json/").json()
+#         return float(ip_data["latitude"]), float(data["longtitude"])
+#     except Exception:
+#         return None
+
+
 #st.write(f"Du valde: {selected}")
 # ---- Initial front page with company name, image and slogan -------
 

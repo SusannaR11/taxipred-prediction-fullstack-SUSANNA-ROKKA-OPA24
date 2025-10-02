@@ -1,12 +1,98 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
 from taxipred.utils.helpers import read_api_endpoint #post_api_endpoint
 from taxipred.utils.helpers import to_is_weekend, to_day_label, divide_time_of_day, is_business_hour
 import pandas as pd
 from taxipred.backend.data_processing import TaxiPriceBI, FareRequest, TaxiPricePredictor
 from datetime import date, datetime
+from taxipred.utils.constants import IMG_PATH
 
 
 data = read_api_endpoint("api/taxi")
+
+def show_home():
+    c1, c2, c3 = st.columns([1, 2, 1])
+    # html/CSS injections for UX
+    with c2:
+        st.markdown(
+    """
+    <div style="text-align:center;">
+        <h1 style="margin-bottom:5px;">RESEKOLLEN AB</h1>
+        <p style="margin-top:0; font-size:20px;">– din restjänst för alla tillfällen –</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+    st.image(str(IMG_PATH), use_container_width=True, output_format="auto")
+
+
+def show_taxikollen():
+    st.title("Taxikollen")
+    st.markdown("##### Här väljer du dina resdetaljer. ")
+    st.markdown("##### Klicka sedan på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
+    travel_date = st.date_input("Välj resdatum: ", value=date.today())
+    default_time = datetime.now().time().replace(second=0, microsecond=0)
+    travel_time = st.time_input("Välj klockslag: ", value=default_time)
+    travel_passenger = st.number_input("Välj antal resenärer: ", min_value=1, max_value=6, value=1, step=1)
+
+    if st.button("Predict Taxi Price"):
+        day_label = to_day_label(travel_date)
+        is_weekend = to_is_weekend(travel_date)
+        tod_label, tod_num = divide_time_of_day(travel_time)
+        business_hour = is_business_hour(travel_time)
+
+        payload = {
+            #     "Trip_Distance_km": Trip_Distance_km,
+            #     "Day_of_Week": Day_of_Week,
+            #     "Time_of_Day": Time_of_Day,
+            #     "Passenger_Count": Passenger_Count
+            #
+            "IsWeekend": is_weekend,
+            "Time_of_Day": tod_label,
+            "Time_of_Day_Num": tod_num,
+            "IsBusinessHour": business_hour,
+            "Passenger_Count": int(travel_passenger)
+        }
+
+    #response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
+    #predicted_price = response.json().get("predicted_price")
+
+        st.markdown(f"Predicted taxi price:")
+
+def show_bi():
+    st.title("BI Taxikollen (begränsad)")
+    st.info("KPI:er, grafer och tabeller för BI.")
+    #st.dataframe(df)
+
+# --- Side menu for option_menu for selecting Predict or BI ------#
+with st.sidebar:
+    selected = option_menu(
+        menu_title="Välj användare",
+        options=["Home", "Taxikollen", "BI Taxikollen (begränsad)"],
+        icons=["house", "taxi-front-fill", "graph-up-arrow"],
+        menu_icon="chat-left-text",
+        default_index=0,
+                styles={
+            "container": {"padding": "5px", "background-color": "#f0f2f6"},
+            "icon": {"color": "#002147", "font-size": "20px"},  # marinblå ikon
+            "nav-link": {
+                "font-size": "16px",
+                "text-align": "left",
+                "margin": "5px",
+                "color": "black"
+            },
+            "nav-link-selected": {
+                "background-color": "#002147",  # marinblå bakgrund för aktivt val
+                "color": "white"                # vit text
+            },
+        }
+    )
+#st.write(f"Du valde: {selected}")
+# ---- Initial front page with company name, image and slogan -------
+
+#st.image(ASSETS_PATH / taxi_bild.jpg)
+
+
 
 #df = pd.DataFrame(data.json())
 
@@ -17,38 +103,14 @@ data = read_api_endpoint("api/taxi")
 # df = load_df(DF_PATH)
 # bi = TaxiPriceBI(df)
 
-# 
-# what-if sandbox utlising outlier scenarious for business opportunities
-def main():
-    st.markdown("# Taxi Prediction BI Dashboard")
 
-    #st.dataframe(df)
-
-travel_date = st.date_input("Travel date", value=date.today())
-travel_time = st.time_input("What time would you like to travel?", value=datetime.now().time())
-
-if st.button("Predict Taxi Price"):
-    day_label = to_day_label(travel_date)
-    is_weekend = to_is_weekend(travel_date)
-    tod_label, tod_num = divide_time_of_day(travel_time)
-    business_hour = is_business_hour(travel_time)
-
-    payload = {
-        #     "Trip_Distance_km": Trip_Distance_km,
-        #     "Day_of_Week": Day_of_Week,
-        #     "Time_of_Day": Time_of_Day,
-        #     "Passenger_Count": Passenger_Count
-        #
-        "IsWeekend": is_weekend,
-        "Time_of_Day": tod_label,
-        "Time_of_Day_Num": tod_num,
-        "IsBusinessHour": business_hour,
-    }
-
-    #response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
-    #predicted_price = response.json().get("predicted_price")
-
-    st.markdown(f"Predicted taxi price:")
+# --- router for main page selector ------
+if selected == "BI Taxikollen (begränsad)":
+    show_bi()
+elif selected == "Taxikollen":
+    show_taxikollen()
+else:
+    show_home()
 
 #     feature = st.selectbox(
 #         "Feature",
@@ -130,5 +192,5 @@ if st.button("Predict Taxi Price"):
 
 
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#   main()

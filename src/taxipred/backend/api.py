@@ -13,7 +13,7 @@ taxi_data = TaxiData()
 async def read_taxi_data():
     return taxi_data.to_json()
 
-#@app.get("api/taxi/bi/")
+#@app.get("api/taxi/predict/")
 #async def bi_opportunities():
 #    return bi_opportunities.to_json()
 

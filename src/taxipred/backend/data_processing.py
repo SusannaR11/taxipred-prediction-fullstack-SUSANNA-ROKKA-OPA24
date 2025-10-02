@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 CSV_PATH = TAXI_CSV_PATH / "taxi_trip_pricing.csv"
 
+
 class TaxiData:
     def __init__(self, csv_path: Path = CSV_PATH):
         try:

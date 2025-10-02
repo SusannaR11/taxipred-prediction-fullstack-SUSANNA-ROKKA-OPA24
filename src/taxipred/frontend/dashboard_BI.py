@@ -3,7 +3,7 @@ from streamlit_option_menu import option_menu
 from taxipred.utils.helpers import read_api_endpoint, post_api_endpoint
 from taxipred.utils.helpers import to_is_weekend, to_day_label, divide_time_of_day, is_business_hour
 import pandas as pd
-from taxipred.backend.data_processing import TaxiPriceBI, FareRequest, TaxiPricePredictor
+from taxipred.backend.data_processing import FareRequest #TaxiData
 from datetime import date, datetime
 from taxipred.utils.constants import IMG_PATH
 from streamlit_geolocation import streamlit_geolocation
@@ -29,7 +29,7 @@ def show_home():
     """,
     unsafe_allow_html=True
 )
-    st.image(str(IMG_PATH), use_container_width=True, output_format="auto")
+    st.image(str(IMG_PATH), width="stretch", output_format="auto")
 
 
 def show_taxikollen():
@@ -39,19 +39,28 @@ def show_taxikollen():
 
 # ----- GPS + Destination (optional) ----------------
     st.markdown("Startpunkt")
+    start_addr = st.text_input(
+        "Reser från (adress / postnr /ort):",
+        value= st.session_state.get("start_addr", "")
+    )
     if st.button("Använd min plats"):
         loc = streamlit_geolocation()
         if loc and "lat" in loc and "lon" in loc:
             lat, lon = loc["lat"], loc["lon"]
-            addr= get_geolocator.reverse((lat, lon), language="sv").address
+            addr= get_geolocator().reverse((lat, lon), language="sv").address
             st.session_state.start_latlon = (lat, lon)
             st.session_state.start_addr = addr
             st.success(f"Hittade positionen: {addr}")
-        else:
-            st.warning("Kunde inte hämta plats.Tillåt platsedelning i webbläsaren eller skriv in address.")
-            
-    start_addr = st.text_input("Reser från: ", value=st.session_state.get("start_addr", ""))
+
     start_latlon = st.session_state.get("start_latlon")
+    if not start_latlon and start_addr.strip():
+        place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
+        if place:
+            start_latlon = (place.latitude, place.longitude)
+            st.session_state.start_latlon = start_latlon
+        else:
+            st.error("Hittade inte adressen.")
+
     dest_addr = st.text_input("Destination (adress /postnr / ort):")
 
     if not start_latlon and start_addr.strip():
@@ -60,6 +69,9 @@ def show_taxikollen():
             start_latlon = (place.latitude, place.longitude)
         else:
             st.error("Hittade inte adressen.")
+
+            #         else:
+            # st.warning("Kunde inte hämta plats. Tillåt platsedelning i webbläsaren eller skriv in address.")
 
         #st.map(data=[{"lat": st.session_state.start_latlon[0],
         #         "lon": st.session_state.start_latlon[1]}])
@@ -82,15 +94,21 @@ def show_taxikollen():
             st.error("Ange destination.")
             return 
         
-        place= get_geolocator().geocode(dest_addr, language="sv", timeout=10)
-        if not place:
-            st.warning("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
-            return 
+        dest_place= get_geolocator().geocode(dest_addr, language="sv", timeout=10)
+        if not dest_place:
+            st.error("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
+            st.stop()
+        dest_latlon = (dest_place.latitude, dest_place.longitude) 
         
-        start= st.session_state.start_latlon
-        end = (place.latitude, place.longitude)
-        km = geodesic(start, end).km
+        km = geodesic(start_latlon, dest_latlon).km
         st.info(f"Avstånd (fågelvägen): {km:.2f} km")
+
+        # Map
+        map_data = [
+            {"lat": start_latlon[0], "lon": start_latlon[1]},
+            {"lat": dest_latlon[0], "lon": dest_latlon[1]}
+        ]
+        st.map(data=map_data)
 
 #-------- Payload to API ---------------
         payload = {

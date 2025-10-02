@@ -37,7 +37,7 @@ def show_taxikollen():
     st.markdown("##### Här väljer du dina resdetaljer. ")
     st.markdown("##### Klicka på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
 
-# ----- GPS + Destination ----------------
+# ----- GPS + Destination (optional) ----------------
     st.markdown("Startpunkt")
     if st.button("Använd min plats"):
         loc = streamlit_geolocation()
@@ -51,10 +51,18 @@ def show_taxikollen():
             st.warning("Kunde inte hämta plats.Tillåt platsedelning i webbläsaren eller skriv in address.")
             
     start_addr = st.text_input("Reser från: ", value=st.session_state.get("start_addr", ""))
-    dest_text = st.text_input("Destination (adress /postnr / ort)")
-    if "start_latlon" in st.session_state:
-        st.map(data=[{"lat": st.session_state.start_latlon[0],
-                 "lon": st.session_state.start_latlon[1]}])
+    start_latlon = st.session_state.get("start_latlon")
+    dest_addr = st.text_input("Destination (adress /postnr / ort):")
+
+    if not start_latlon and start_addr.strip():
+        place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
+        if place:
+            start_latlon = (place.latitude, place.longitude)
+        else:
+            st.error("Hittade inte adressen.")
+
+        #st.map(data=[{"lat": st.session_state.start_latlon[0],
+        #         "lon": st.session_state.start_latlon[1]}])
 
 # ------ Form with user input (date/time is used in BI module) -----
     with st.form("data"):
@@ -70,11 +78,11 @@ def show_taxikollen():
         if "start_latlon" not in st.session_state:
             st.error("Saknar startpunkt. Klicka 'Använd min plats' först.")
             return
-        if not dest_text.strip():
+        if not dest_addr.strip():
             st.error("Ange destination.")
             return 
         
-        place= get_geolocator().geocode(dest_text, language="sv", timeout=10)
+        place= get_geolocator().geocode(dest_addr, language="sv", timeout=10)
         if not place:
             st.warning("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
             return 

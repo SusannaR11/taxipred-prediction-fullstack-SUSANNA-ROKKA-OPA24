@@ -97,13 +97,6 @@ def show_taxikollen():
         km = geodesic(start_latlon, dest_latlon).km
         st.info(f"Avstånd (fågelvägen): {km:.2f} km")
 
-        # Map
-        map_data = [
-            {"lat": start_latlon[0], "lon": start_latlon[1]},
-            {"lat": dest_latlon[0], "lon": dest_latlon[1]}
-        ]
-        st.map(data=map_data)
-
 #-------- Payload to API ---------------
         payload = {
             "Trip_Distance_km": float(km),
@@ -116,7 +109,14 @@ def show_taxikollen():
         response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
         predicted_price = response.json().get("predicted_price")
 
-        st.markdown(f"Predicted price: {predicted_price}")
+        st.info(f"Predicted price: {predicted_price:.2f} SEK")
+        
+        # Map
+        map_data = [
+            {"lat": start_latlon[0], "lon": start_latlon[1]},
+            {"lat": dest_latlon[0], "lon": dest_latlon[1]}
+        ]
+        st.map(data=map_data)
 
 
         # BI-only features -----------
@@ -128,8 +128,6 @@ def show_taxikollen():
 
     #response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
     #predicted_price = response.json().get("predicted_price")
-
-        st.markdown(f"Predicted taxi price:")
 
 def show_bi():
     st.title("BI Taxikollen (begränsad)")

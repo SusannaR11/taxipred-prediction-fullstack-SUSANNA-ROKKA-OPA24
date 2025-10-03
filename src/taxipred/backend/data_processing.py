@@ -22,6 +22,7 @@ class TaxiData:
     def to_json(self):
         return self.df.to_dict(orient = "records")
 
+# calculates tripduration based on distance_km user input
 class TripDurationCalculator:
     def __init__(self, df):
         mins_per_km = (df["Trip_Duration_Minutes"] / df["Trip_Distance_km"]).median()
@@ -31,9 +32,22 @@ class TripDurationCalculator:
         # just in case to not send value 0 to model
         return max(float(distance_km) * self._min_per_km, 1.0)       
 
- class BaseFare:
-    def __init__(self):
-        basefare = (df)       
+# calculates Base_Fare, Per_km_Rate, Per_Minute_Rate using passenger_count # based on user input in UI
+class FareRateTable:
+    def __init__(self, df: pd.DataFrame):
+        rate_cols = ["Base_Fare", "Per_Km_Rate", "Per_Minute_Rate"]
+        # calculate median per passenger
+        self.by_pax = df.groupby("Passenger_Count")[rate_cols].median()
+        self.by_pax.index = self.by_pax.index.astype(float)
+        self.overall = df[rate_cols].median().to_dict()
+    
+#fallback in case input is other than training data (ie 1-6)
+    def get(self, passengers: int | float) -> dict:
+        p = float(passengers)
+        if p in self.by_pax.index:
+            return self.by_pax.loc[p].to_dict()
+        return self.overall
+        
 
 # request/ response schemas THE ONE TO USE
 class FareRequest(BaseModel):
@@ -50,11 +64,6 @@ DEFAULTS = {
     "Per_Minute_Rate": 5.0,
     "Trip_Duration_Minutes": 15.0,
  }
-
-FEATURE_ORDER = [
-    "Trip_Distance_km","Passenger_Count","Base_Fare",
-    "Per_Km_Rate","Per_Minute_Rate","Trip_Duration_Minutes"
-]   
 
 # output
 class PredictionOutput(BaseModel):

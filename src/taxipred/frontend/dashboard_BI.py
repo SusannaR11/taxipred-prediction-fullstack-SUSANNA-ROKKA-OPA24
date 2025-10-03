@@ -7,6 +7,7 @@ from taxipred.backend.data_processing import FareRequest #TaxiData
 from datetime import date, datetime
 from taxipred.utils.constants import IMG_PATH
 from streamlit_geolocation import streamlit_geolocation
+from streamlit_folium import st_folium, folium
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
@@ -15,6 +16,32 @@ def get_geolocator():
     return Nominatim(user_agent="taxikollen")
 
 data = read_api_endpoint("/api/taxi")
+# ----<<<<<< new
+def render_gbg_map(start_addr: str, dest_addr: str):
+    m = folium.Map(location=[57.7089, 11.9746], zoom_start=12, tiles="OpenStreetMap")
+
+    points = []
+    if start_addr.strip():
+        s = get_geolocator().geocode(f"{start_addr}, Göteborg", language="sv", timeout=10)
+        if s:
+            folium.Marker([s.latitude, s.longitude], popup=f"Från: {start_addr}").add_to(m)
+            points.append((s.latitude, s.longitude))
+        else:
+            st.warning("Hittade inte startadressen.")
+    if dest_addr.strip():
+        d = get_geolocator().geocode(f"{dest_addr}, Göteborg", language="sv", timeout=10)
+        if d:
+            folium.Marker([d.latitude, d.longitude], popup=f"Till: {dest_addr}").add_to(m)
+            points.append((d.latitude, d.longitude))
+        else:
+            st.warning("Hittade inte destinationen.")
+
+    # Fit map to markers (if both exist)
+    if len(points) >= 2:
+        m.fit_bounds(points)
+
+    st_folium(m, width=750, height=520) #->> newwww 
+
 
 def show_home():
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -62,6 +89,7 @@ def show_taxikollen():
             st.error("Hittade inte adressen.")
 
     dest_addr = st.text_input("Destination (adress /postnr / ort):")
+    render_gbg_map(start_addr, dest_addr)
 
     if not start_latlon and start_addr.strip():
         place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
@@ -78,6 +106,8 @@ def show_taxikollen():
         travel_passenger = st.number_input("Välj antal resenärer: ", min_value=1, max_value=6, value=1, step=1)
 
         submitted = st.form_submit_button("Predict Taxi Price")
+        st.markdown("### Göteborg")   
+
 
 #--------- Submit: geocode destination, calculate distance, call API -----
     if submitted:
@@ -110,13 +140,14 @@ def show_taxikollen():
         predicted_price = response.json().get("predicted_price")
 
         st.info(f"Predicted price: {predicted_price:.2f} SEK")
+    
         
         # Map
-        map_data = [
-            {"lat": start_latlon[0], "lon": start_latlon[1]},
-            {"lat": dest_latlon[0], "lon": dest_latlon[1]}
-        ]
-        st.map(data=map_data)
+        # map_data = [
+        #     {"lat": start_latlon[0], "lon": start_latlon[1]},
+        #     {"lat": dest_latlon[0], "lon": dest_latlon[1]}
+        # ]
+        # st.map(data=map_data)
 
 
         # BI-only features -----------

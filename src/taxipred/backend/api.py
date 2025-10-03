@@ -7,7 +7,6 @@ import numpy as np
 from taxipred.utils.constants import MODELS_PATH
 
 app = FastAPI()
-
 taxi_data = TaxiData()
 
 @app.get("/api/taxi/")
@@ -27,5 +26,4 @@ def predicted_price(payload: FareRequest):
 #    return bi_opportunities.to_json()
 
 #@app.post("api/taxi/predict/bi")
-
 

@@ -10,3 +10,4 @@ RF_PATH = MODELS_PATH / "taxi_rf_model.joblib"
 
 ASSETS_PATH = Path(__file__).parents[1] / "assets"
 IMG_PATH = ASSETS_PATH / "taxi_bild.jpg"
+

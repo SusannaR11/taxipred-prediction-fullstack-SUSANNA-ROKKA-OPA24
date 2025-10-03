@@ -34,7 +34,7 @@ def show_home():
 
 def show_taxikollen():
     st.title("Taxikollen")
-    st.markdown("##### Här väljer du dina resdetaljer. ")
+    st.markdown("#### Här väljer du dina resdetaljer. ")
     st.markdown("##### Klicka på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
 
 # ----- GPS + Destination (optional) ----------------
@@ -69,12 +69,6 @@ def show_taxikollen():
             start_latlon = (place.latitude, place.longitude)
         else:
             st.error("Hittade inte adressen.")
-
-            #         else:
-            # st.warning("Kunde inte hämta plats. Tillåt platsedelning i webbläsaren eller skriv in address.")
-
-        #st.map(data=[{"lat": st.session_state.start_latlon[0],
-        #         "lon": st.session_state.start_latlon[1]}])
 
 # ------ Form with user input (date/time is used in BI module) -----
     with st.form("data"):

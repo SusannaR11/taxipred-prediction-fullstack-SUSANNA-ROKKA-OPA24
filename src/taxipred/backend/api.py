@@ -5,11 +5,30 @@ from pydantic import BaseModel, Field
 import joblib
 import numpy as np
 from taxipred.utils.constants import MODELS_PATH
+from datetime import datetime, timedelta
+import requests
 
 app = FastAPI()
 taxi_data = TaxiData()
 tripdur_calc = TripDurationCalculator(taxi_data.df)
 rate_table = FareRateTable(taxi_data.df)
+
+# cache rate and timestamp (for 1 hour)
+# cache so that the web request does not keep hitting the API over and over
+_fx_cache = {"rate": None, "ts": None}
+
+def get_usd_to_sek() -> float:
+    now = datetime.utcnow()
+    if _fx_cache["rate"] and _fx_cache["ts"] and now - _fx_cache["ts"] < timedelta(hours=1):
+        return _fx_cache["rate"]
+    r = requests.get("https://api.frankfurter.dev/v1/latest",
+        params={"base": "USD", "symbols": "SEK"},
+        timeout=5)
+    r.raise_for_status()
+    rate = float(r.json()["rates"]["SEK"])
+    _fx_cache.update({"rate": rate, "ts": now})
+    return rate
+
 
 # the feature order model was trained in
 FEATURE_ORDER = [
@@ -34,11 +53,15 @@ def predicted_price(payload: FareRequest):
     X = pd.DataFrame([row], columns=FEATURE_ORDER, dtype=float) #added
     rf = joblib.load(MODELS_PATH / "taxi_rf_model.joblib")
     y = rf.predict(X)
+    # convert usd to sek:
+    y_usd = float(y[0])
+    usd_sek = get_usd_to_sek()
+    y_sek = y_usd * usd_sek
     #prediction = rf.predict(data_to_predict) # removed
     #return{"predicted_price": prediction[0]} # removed
-    return {"predicted_price": float(y[0])}
+    return {"predicted_price": y_sek}
   
-  
+
 #@app.get("api/taxi/predict/")
 #async def bi_opportunities():
 #    return bi_opportunities.to_json()

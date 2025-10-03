@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import pandas as pd
-from taxipred.backend.data_processing import TaxiData, FareRequest, PredictionOutput
+from taxipred.backend.data_processing import TaxiData, FareRequest, PredictionOutput, TripDurationCalculator
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
@@ -8,6 +8,7 @@ from taxipred.utils.constants import MODELS_PATH
 
 app = FastAPI()
 taxi_data = TaxiData()
+tripdur_calc = TripDurationCalculator(taxi_data.df)
 
 @app.get("/api/taxi/")
 def read_taxi_data():

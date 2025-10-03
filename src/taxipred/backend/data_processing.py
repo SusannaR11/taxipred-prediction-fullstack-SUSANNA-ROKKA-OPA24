@@ -21,7 +21,20 @@ class TaxiData:
     
     def to_json(self):
         return self.df.to_dict(orient = "records")
-    
+
+class TripDurationCalculator:
+    def __init__(self, df):
+        mins_per_km = (df["Trip_Duration_Minutes"] / df["Trip_Distance_km"]).median()
+        self._min_per_km = float(mins_per_km)
+
+    def tripduration(self, distance_km: float) -> float:
+        # just in case to not send value 0 to model
+        return max(float(distance_km) * self._min_per_km, 1.0)       
+
+ class BaseFare:
+    def __init__(self):
+        basefare = (df)       
+
 # request/ response schemas THE ONE TO USE
 class FareRequest(BaseModel):
     Trip_Distance_km: float = Field(..., ge=0.1)

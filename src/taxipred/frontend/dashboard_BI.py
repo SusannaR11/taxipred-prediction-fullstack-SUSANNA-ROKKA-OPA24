@@ -14,27 +14,20 @@ from geopy.distance import geodesic
 def get_geolocator():
     return Nominatim(user_agent="taxikollen")
 
-data = read_api_endpoint("/api/taxi")
-# ----<<<<<< new
-def render_gbg_map(start_addr: str, dest_addr: str):
+data = read_api_endpoint("/api/taxi/")
+
+# -------render Gbg map with roads----------------
+def render_gbg_map(start_latlon: tuple | None, dest_latlon: tuple | None, start_label: str, dest_label:str):
     m = folium.Map(location=[57.7089, 11.9746], zoom_start=12, tiles="OpenStreetMap")
 
     points = []
-    if start_addr.strip():
-        s = get_geolocator().geocode(f"{start_addr}, Göteborg", language="sv", timeout=10)
-        if s:
-            folium.Marker([s.latitude, s.longitude], popup=f"Från: {start_addr}").add_to(m)
-            points.append((s.latitude, s.longitude))
-        else:
-            st.warning("Hittade inte startadressen.")
-    if dest_addr.strip():
-        d = get_geolocator().geocode(f"{dest_addr}, Göteborg", language="sv", timeout=10)
-        if d:
-            folium.Marker([d.latitude, d.longitude], popup=f"Till: {dest_addr}").add_to(m)
-            points.append((d.latitude, d.longitude))
-        else:
-            st.warning("Hittade inte destinationen.")
-
+    if start_latlon:
+        folium.Marker(start_latlon, popup=f"Från: {start_label}").add_to(m)
+        points.append(start_latlon)
+    if dest_latlon:
+        folium.Marker(dest_latlon, popup=f"Till: {dest_label}").add_to(m)
+        points.append(dest_latlon)
+  
     # Fit map to markers (if both exist)
     if len(points) >= 2:
         m.fit_bounds(points)
@@ -67,39 +60,37 @@ def show_taxikollen():
     st.markdown("Startpunkt")
     start_addr = st.text_input(
         "Reser från (adress / postnr /ort):",
-        value= st.session_state.get("start_addr", "")
+        value= st.session_state.get("start_addr", ""),
+        key="start_addr_input",
     )
+    if st.session_state.get("_prev_start_addr") != start_addr:
+        st.session_state["_prev_start_addr"] = start_addr
+        st.session_state.pop("start_latlon", None)
+
     if st.button("Använd min plats"):
         loc = streamlit_geolocation()
         if loc and "lat" in loc and "lon" in loc:
             lat, lon = loc["lat"], loc["lon"]
-            addr= get_geolocator().reverse((lat, lon), language="sv").address
+            try:
+                addr= get_geolocator().reverse((lat, lon), language="sv").address
+            except Exception:
+                addr = f"{lat:.5f}, {lon:.5f}"
             st.session_state.start_latlon = (lat, lon)
             st.session_state.start_addr = addr
             st.success(f"Hittade positionen: {addr}")
 
     start_latlon = st.session_state.get("start_latlon")
     if not start_latlon and start_addr.strip():
-        place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
+        place = get_geolocator().geocode(f"{start_addr}, Göteborg", language="sv", timeout=10)
         if place:
             start_latlon = (place.latitude, place.longitude)
             st.session_state.start_latlon = start_latlon
         else:
             st.error("Hittade inte adressen.")
 
-    dest_addr = st.text_input("Destination (adress /postnr / ort):")
+    dest_addr = st.text_input("Destination (adress / postnr / ort):")
 
-    #------- Live map ------------
-    render_gbg_map(start_addr, dest_addr)
-
-    # if not start_latlon and start_addr.strip():
-    #     place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
-    #     if place:
-    #         start_latlon = (place.latitude, place.longitude)
-    #     else:
-    #         st.error("Hittade inte adressen.")
-
-# ------ Form with user input (date/time is used in BI module) -----
+    # ------ Form with user input (date/time is used in BI module) -----
     with st.form("data"):
         travel_date = st.date_input("Välj resdatum: ", value=date.today())
         default_time = datetime.now().time().replace(second=0, microsecond=0)
@@ -107,24 +98,25 @@ def show_taxikollen():
         travel_passenger = st.number_input("Välj antal resenärer: ", min_value=1, max_value=6, value=1, step=1)
 
         submitted = st.form_submit_button("Predict Taxi Price")
-        st.markdown("### Göteborg")   
 
 
 #--------- Submit: geocode destination, calculate distance, call API -----
+    dest_latlon = None
     if submitted:
-        if "start_latlon" not in st.session_state:
+        if not start_latlon:
             st.error("Saknar startpunkt. Klicka 'Använd min plats' först.")
-            return
+            st.stop()
         if not dest_addr.strip():
             st.error("Ange destination.")
-            return 
+            st.stop()
         
-        dest_place= get_geolocator().geocode(dest_addr, language="sv", timeout=10)
+        dest_place= get_geolocator().geocode(f"{dest_addr}, Göteborg", language="sv", timeout=10)
         if not dest_place:
             st.error("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
             st.stop()
         dest_latlon = (dest_place.latitude, dest_place.longitude) 
         
+# -----------Straight-distance NOT road distance:      
         km = geodesic(start_latlon, dest_latlon).km
         st.info(f"Avstånd (fågelvägen): {km:.2f} km")
 
@@ -140,9 +132,20 @@ def show_taxikollen():
         response = post_api_endpoint(payload, endpoint="/api/taxi/predict")
         predicted_price = response.json().get("predicted_price")
 
+        st.session_state.km = float(km)
+        st.session_state.predicted_price = float(predicted_price) if predicted_price is not None else None
+        st.session_state.dest_latlon = dest_latlon
+
         st.info(f"Predicted price: {predicted_price:.2f} SEK")
     
-        
+        #------- Live map ------------
+    st.markdown("### Göteborg") 
+    render_gbg_map(
+        start_latlon=start_latlon, 
+        dest_latlon=st.session_state.get("dest_latlon", None),        start_label=start_addr or st.session_state.get("start_addr", "Start"),
+        dest_label=dest_addr or "Destination")
+
+
         # Map
         # map_data = [
         #     {"lat": start_latlon[0], "lon": start_latlon[1]},
@@ -173,8 +176,7 @@ with st.sidebar:
         options=["Home", "Taxikollen", "BI Taxikollen (begränsad)"],
         icons=["house", "taxi-front-fill", "graph-up-arrow"],
         menu_icon="chat-left-text",
-        default_index=0,
-                styles={
+        styles={
             "container": {"padding": "5px", "background-color": "#f0f2f6"},
             "icon": {"color": "#002147", "font-size": "20px"},  # marinblå ikon
             "nav-link": {

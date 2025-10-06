@@ -2,7 +2,6 @@ import streamlit as st, requests
 from streamlit_option_menu import option_menu
 from taxipred.utils.helpers import read_api_endpoint, post_api_endpoint
 from taxipred.utils.helpers import to_is_weekend, to_day_label, divide_time_of_day, is_business_hour
-import pandas as pd
 from taxipred.backend.data_processing import FareRequest #TaxiData
 from datetime import date, datetime
 from taxipred.utils.constants import IMG_PATH
@@ -89,14 +88,16 @@ def show_taxikollen():
             st.error("Hittade inte adressen.")
 
     dest_addr = st.text_input("Destination (adress /postnr / ort):")
+
+    #------- Live map ------------
     render_gbg_map(start_addr, dest_addr)
 
-    if not start_latlon and start_addr.strip():
-        place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
-        if place:
-            start_latlon = (place.latitude, place.longitude)
-        else:
-            st.error("Hittade inte adressen.")
+    # if not start_latlon and start_addr.strip():
+    #     place = get_geolocator().geocode(start_addr, language="sv", timeout=10)
+    #     if place:
+    #         start_latlon = (place.latitude, place.longitude)
+    #     else:
+    #         st.error("Hittade inte adressen.")
 
 # ------ Form with user input (date/time is used in BI module) -----
     with st.form("data"):

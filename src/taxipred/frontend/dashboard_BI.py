@@ -101,19 +101,19 @@ def show_taxikollen():
 
 
 #--------- Submit: geocode destination, calculate distance, call API -----
-    dest_latlon = None
-    if submitted:
-        if not start_latlon:
-            st.error("Saknar startpunkt. Klicka 'Använd min plats' först.")
-            st.stop()
-        if not dest_addr.strip():
-            st.error("Ange destination.")
-            st.stop()
+    # dest_latlon = None
+    # if submitted:
+    #     if not start_latlon:
+    #         st.error("Saknar startpunkt. Klicka 'Använd min plats' först.")
+    #         st.stop()
+    #     if not dest_addr.strip():
+    #         st.error("Ange destination.")
+    #         st.stop()
         
         dest_place= get_geolocator().geocode(f"{dest_addr}, Göteborg", language="sv", timeout=10)
-        if not dest_place:
-            st.error("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
-            st.stop()
+    #     if not dest_place:
+    #         st.error("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
+    #         st.stop()
         dest_latlon = (dest_place.latitude, dest_place.longitude) 
         
 # -----------Straight-distance NOT road distance:      

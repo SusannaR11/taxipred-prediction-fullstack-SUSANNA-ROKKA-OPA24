@@ -191,33 +191,38 @@ def show_bi():
 #----- BI uplift toggles --------
     base = st.number_input("Skriv ett taxipris (SEK)", min_value=0.0, value=120.0, step=1.0)
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         rain = st.toggle("Regn", value=False)
     with c2:
-        weekend = st.toggle("Helg", value=False)
+        snow = st.toggle("Snö", value=False)
     with c3:
+        weekend = st.toggle("Helg", value=False)
+    with c4:
         businesshour = st.toggle("Kontorstid", value=False)
+
+        
     
     if st.button("Beräkna uplift"):
         payload = {
             "base_price": float(base),
-            "rain": 1 if rain else 0,
-            "weekend": 1 if weekend else 0,
-            "businesshour": 1 if businesshour else 0,
+            "IsRrain": 1 if rain else 0,
+            "IsSnow": 1 if snow else 0,
+            "IsWeekend": 1 if weekend else 0,
+            "IsBusinessHour": 1 if businesshour else 0,
         }
-        res = post_api_endpoint(payload, endpoint="api/taxi/bi").json()
-
-        st.info(f"Uplift totalt: {res['uplift_total_pct']:.1f}%")
+        res = post_api_endpoint(payload, endpoint="/api/taxi/bi").json()
+        st.info(f"Uplift totalt: {res['uplift_total_percent']:.1f}%")
         st.success(f"Nytt pris: {res['adjusted_price']:.2f} SEK")
 
 #------- view break down of uplifts ---------
         applied = res.get("applied", {})
         st.caption("Uplift per faktor: ")
         st.write(
-            f"Regn: {applied.get('rain', 0):.1f}% | "
-            f"Helg: {applied.get('weekend', 0):.1f}% | "
-            f"Kontorstid: {applied.get('businesshour', 0):.1f}% | "
+            f"Regn: {applied.get('IsRain', 0):.1f}% | "
+            f"Snö: {applied.get('IsSnow', 0):.1f}% | "
+            f"Helg: {applied.get('IsWeekend', 0):.1f}% | "
+            f"Kontorstid: {applied.get('IsBusinessHour', 0):.1f}% | "
         )
 
 # --- Side menu for option_menu for selecting Predict or BI ------#

@@ -5,8 +5,12 @@ import json
 import joblib
 from pydantic import BaseModel, Field
 import numpy as np
+from typing import Dict, Tuple
 
 CSV_PATH = TAXI_CSV_PATH / "df_BI.csv"
+
+BI_BINARY_COLS = ["IsBusinessHour", "IsRain", "IsSnow", "IsWeekend"]
+TARGET_COL = "Trip_Price"
 
 
 class TaxiData:
@@ -80,6 +84,34 @@ class PredictionOutput(BaseModel):
 #         return float(y_pred)
 
 # # ----- BI data-processing ------
+# ------ uplifts: rain, snow, weekend, businesshour
+class BIUplifts:
+    def __init__(self, csv_path: Path = CSV_PATH):
+        self.df = pd.read_csv(csv_path)
+        self.df.columns = [str(c).strip() for c in self.df.columns]
+        self.uplift_percent: Dict[str, float] = {}
+        for col in BI_BINARY_COLS:
+            m1 = self.df.loc[self.df[col] == 1, TARGET_COL].mean()
+            m0 = self.df.loc[self.df[col] == 0, TARGET_COL].mean()
+            percent = ((m1-m0) / m0) * 100.0
+            self.uplift_percent[col] = float(percent)
+    
+    def apply(self, base_price: float, flags: Dict[str, int]) -> Tuple[Dict[str, float],float, float]:
+        applied = {}
+        adjust = float (base_price)
+        for col in BI_BINARY_COLS:
+            percent = self.uplift_percent.get(col, 0.0)if int(flags.get(col, 0)) == 1 else 0.0
+            applied[col] = percent
+            if percent !=0.0:
+                adjust *= (1.0 + percent / 100.0)
+        uplift_total_percent = 0.0 if base_price <= 0 else (adjust / base_price - 1.0) * 100.0
+        return applied, round(uplift_total_percent, 2), round(adjust, 2)
+
+
+
+
+
+
 # # smart features and outlier analysis:
 # class TaxiPriceBI:
 #     def __init__(self, df: pd.DataFrame):

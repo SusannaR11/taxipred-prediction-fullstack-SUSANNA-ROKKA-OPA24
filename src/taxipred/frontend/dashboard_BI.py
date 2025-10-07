@@ -32,7 +32,7 @@ def render_gbg_map(start_latlon: tuple | None, dest_latlon: tuple | None, start_
     if len(points) >= 2:
         m.fit_bounds(points)
 
-    st_folium(m, width=750, height=520) #->> newwww 
+    st_folium(m, width=750, height=520)
 
 
 def show_home():
@@ -168,7 +168,14 @@ def show_taxikollen():
 
 def show_bi():
     st.title("BI Taxikollen (begränsad)")
-    st.info("KPI:er, grafer och tabeller för BI.")
+    clicked = st.button("Ange kod")
+    if clicked:
+        st.session_state["bi_unlocked"] = True
+        
+    if st.session_state.get("bi_unlocked"):
+        st.info("KPI:er, grafer och tabeller för BI.")
+    else:
+        st.warning("Den här sidan är låst. Klicka 'Ange kod'. ")
     #st.dataframe(df)
 
 # --- Side menu for option_menu for selecting Predict or BI ------#

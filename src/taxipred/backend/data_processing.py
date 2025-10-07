@@ -87,22 +87,34 @@ class PredictionOutput(BaseModel):
 # ------ uplifts: rain, snow, weekend, businesshour
 class BIUplifts:
     def __init__(self, csv_path: Path = CSV_PATH):
-        self.df = pd.read_csv(csv_path)
-        self.df.columns = [str(c).strip() for c in self.df.columns]
+        df = pd.read_csv(csv_path)
+        df.columns = [str(c).strip() for c in df.columns]
+        self.general_mean = float(df[TARGET_COL].mean())
+
+        self.means: Dict[str, Dict[int, float]] = {}
         self.uplift_percent: Dict[str, float] = {}
+
         for col in BI_BINARY_COLS:
-            m1 = self.df.loc[self.df[col] == 1, TARGET_COL].mean()
-            m0 = self.df.loc[self.df[col] == 0, TARGET_COL].mean()
+            g = df.groupby(col)[TARGET_COL].mean()
+            m0 = float(g.get(0, float("nan")))
+            m1 = float(g.get(1, float("nan")))
+            self.means[col] = {0: m0, 1: m1}
             percent = ((m1-m0) / m0) * 100.0
-            self.uplift_percent[col] = float(percent)
+            self.uplift_percent[col] = float(((m1-m0)/m0)*100.0)
+
+    def stats(self) -> Dict:
+        return{
+            "general_mean_price": round(self.general_mean, 2),
+            "means": {k: {str(k2): round(v2, 2) for k2, v2 in v.items()} for k, v in self.means.items()},
+            "uplift_percent":{k: round(v,2) for k,v in self.uplift_percent.items()},
+        }
     
     def apply(self, base_price: float, flags: Dict[str, int]) -> Tuple[Dict[str, float],float, float]:
-        applied = {}
+        applied = {col: (self.uplift_percent[col] if int(flags.get(col, 0)) == 1 else 0.0) for col in BI_BINARY_COLS}
         adjust = float (base_price)
-        for col in BI_BINARY_COLS:
-            percent = self.uplift_percent.get(col, 0.0)if int(flags.get(col, 0)) == 1 else 0.0
-            applied[col] = percent
-            if percent !=0.0:
+
+        for percent in applied.values():
+            if percent:
                 adjust *= (1.0 + percent / 100.0)
         uplift_total_percent = 0.0 if base_price <= 0 else (adjust / base_price - 1.0) * 100.0
         return applied, round(uplift_total_percent, 2), round(adjust, 2)

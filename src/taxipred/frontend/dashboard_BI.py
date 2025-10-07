@@ -189,24 +189,29 @@ def show_bi():
     #st.dataframe(df)
 
 #----- BI uplift toggles --------
-    base = st.number_input("Skriv ett taxipris (SEK)", min_value=0.0, value=120.0, step=1.0)
+    stats = read_api_endpoint("/api/taxi/bi").json()
+    st.caption(f"Genomsnittligt taxipris i data: {stats['general_mean_price']:.2f} SEK")
+
+    col_a, col_b, col_c, col_d = st.columns(4)
+    with col_a: st.metric("Regn", f"{stats['uplift_percent']['IsRain']:.2f}%")
+    with col_b: st.metric("Snö", f"{stats['uplift_percent']['IsSnow']:.2f}%")
+    with col_c: st.metric("Kontorstid", f"{stats['uplift_percent']['IsBusinessHour']:.2f}%")
+    with col_d: st.metric("Helg", f"{stats['uplift_percent']['IsWeekend']:.2f}%")
+
+    st.divider()   
+
+    base = st.number_input("Skriv ett taxipris (SEK)", min_value=0.0, value=140.0, step=1.0)
 
     c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        rain = st.toggle("Regn", value=False)
-    with c2:
-        snow = st.toggle("Snö", value=False)
-    with c3:
-        weekend = st.toggle("Helg", value=False)
-    with c4:
-        businesshour = st.toggle("Kontorstid", value=False)
-
-        
+    with c1: rain = st.toggle("Regn", value=False)
+    with c2: snow = st.toggle("Snö", value=False)
+    with c3: businesshour   = st.toggle("Kontorstid", value=False)
+    with c4: weekend = st.toggle("Helg", value=False)
     
     if st.button("Beräkna uplift"):
         payload = {
             "base_price": float(base),
-            "IsRrain": 1 if rain else 0,
+            "IsRain": 1 if rain else 0,
             "IsSnow": 1 if snow else 0,
             "IsWeekend": 1 if weekend else 0,
             "IsBusinessHour": 1 if businesshour else 0,
@@ -215,15 +220,21 @@ def show_bi():
         st.info(f"Uplift totalt: {res['uplift_total_percent']:.1f}%")
         st.success(f"Nytt pris: {res['adjusted_price']:.2f} SEK")
 
-#------- view break down of uplifts ---------
-        applied = res.get("applied", {})
-        st.caption("Uplift per faktor: ")
-        st.write(
-            f"Regn: {applied.get('IsRain', 0):.1f}% | "
-            f"Snö: {applied.get('IsSnow', 0):.1f}% | "
-            f"Helg: {applied.get('IsWeekend', 0):.1f}% | "
-            f"Kontorstid: {applied.get('IsBusinessHour', 0):.1f}% | "
+        a = res["applied"]
+        st.caption(
+            f"Regn: {a['IsRain']:.2f}%  |  Snö: {a['IsSnow']:.2f}%  |  "
+            f"Kontorstid: {a['IsBusinessHour']:.2f}%  |  Helg: {a['IsWeekend']:.2f}%"
         )
+
+# #------- view break down of uplifts ---------
+#         applied = res.get("applied", {})
+#         st.caption("Uplift per faktor: ")
+#         st.write(
+#             f"Regn: {applied.get('IsRain', 0):.1f}% | "
+#             f"Snö: {applied.get('IsSnow', 0):.1f}% | "
+#             f"Helg: {applied.get('IsWeekend', 0):.1f}% | "
+#             f"Kontorstid: {applied.get('IsBusinessHour', 0):.1f}% | "
+#         )
 
 # --- Side menu for option_menu for selecting Predict or BI ------#
 with st.sidebar:

@@ -52,9 +52,10 @@ def show_home():
 
 
 def show_taxikollen():
-    st.title("Taxikollen")
-    st.markdown("#### Här väljer du dina resdetaljer. ")
-    st.markdown("##### Klicka på 'Predict Taxi Price' så estimerar vi ditt respris i realtid.")
+    st.title("Taxikollen \U0001F696")
+    st.markdown("### Klicka och estimera taxipris i realtid.")
+    st.markdown("##### Här väljer du dina resdetaljer: ")
+
 
 # ----- GPS + Destination (optional) ----------------
     st.markdown("Startpunkt")
@@ -167,16 +168,57 @@ def show_taxikollen():
     #predicted_price = response.json().get("predicted_price")
 
 def show_bi():
-    st.title("BI Taxikollen (begränsad)")
+    st.title("BI Taxikollen")
     clicked = st.button("Ange kod")
     if clicked:
         st.session_state["bi_unlocked"] = True
+
+#---- Passcode for BI content ----
+    # if st.session_state.get("show bi_code"):
+    #     code = st.text_input("Skriv kod", type="password")
+    #     if st.button("Bekräfta"):
+    #         if code == "1234":
+    #             st.session_state["bi_unlocked"] = True
+    #         else:
+    #             st.error("Fel kod")
         
     if st.session_state.get("bi_unlocked"):
         st.info("KPI:er, grafer och tabeller för BI.")
     else:
         st.warning("Den här sidan är låst. Klicka 'Ange kod'. ")
     #st.dataframe(df)
+
+#----- BI uplift toggles --------
+    base = st.number_input("Skriv ett taxipris (SEK)", min_value=0.0, value=120.0, step=1.0)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        rain = st.toggle("Regn", value=False)
+    with c2:
+        weekend = st.toggle("Helg", value=False)
+    with c3:
+        businesshour = st.toggle("Kontorstid", value=False)
+    
+    if st.button("Beräkna uplift"):
+        payload = {
+            "base_price": float(base),
+            "rain": 1 if rain else 0,
+            "weekend": 1 if weekend else 0,
+            "businesshour": 1 if businesshour else 0,
+        }
+        res = post_api_endpoint(payload, endpoint="api/taxi/bi").json()
+
+        st.info(f"Uplift totalt: {res['uplift_total_pct']:.1f}%")
+        st.success(f"Nytt pris: {res['adjusted_price']:.2f} SEK")
+
+#------- view break down of uplifts ---------
+        applied = res.get("applied", {})
+        st.caption("Uplift per faktor: ")
+        st.write(
+            f"Regn: {applied.get('rain', 0):.1f}% | "
+            f"Helg: {applied.get('weekend', 0):.1f}% | "
+            f"Kontorstid: {applied.get('businesshour', 0):.1f}% | "
+        )
 
 # --- Side menu for option_menu for selecting Predict or BI ------#
 with st.sidebar:
@@ -187,12 +229,13 @@ with st.sidebar:
         menu_icon="chat-left-text",
         styles={
             "container": {"padding": "5px", "background-color": "#f0f2f6"},
-            "icon": {"color": "#002147", "font-size": "20px"},  # marinblå ikon
+            "icon": {"color": "inherit", "font-size": "20px"},  # marinblå ikon
             "nav-link": {
                 "font-size": "16px",
                 "text-align": "left",
                 "margin": "5px",
-                "color": "black"
+                "color": "black",
+                "--hover-color": "#e6e9ef"
             },
             "nav-link-selected": {
                 "background-color": "#002147",  # marinblå bakgrund för aktivt val

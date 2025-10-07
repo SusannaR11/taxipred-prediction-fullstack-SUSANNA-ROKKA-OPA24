@@ -61,6 +61,8 @@ def predicted_price(payload: FareRequest):
     #return{"predicted_price": prediction[0]} # removed
     return {"predicted_price": y_sek}
   
+@app.post("api/taxi/bi")
+def 
 
 #@app.get("api/taxi/predict/")
 #async def bi_opportunities():

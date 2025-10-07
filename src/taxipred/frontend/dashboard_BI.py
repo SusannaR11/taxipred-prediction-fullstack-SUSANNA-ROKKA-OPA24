@@ -109,7 +109,7 @@ def show_taxikollen():
     #     if not dest_addr.strip():
     #         st.error("Ange destination.")
     #         st.stop()
-        
+    if submitted:   
         dest_place= get_geolocator().geocode(f"{dest_addr}, Göteborg", language="sv", timeout=10)
     #     if not dest_place:
     #         st.error("Hittade inte destinationen. Prova 'Gata 1, Stad'.")
@@ -118,7 +118,6 @@ def show_taxikollen():
         
 # -----------Straight-distance NOT road distance:      
         km = geodesic(start_latlon, dest_latlon).km
-        st.info(f"Avstånd (fågelvägen): {km:.2f} km")
 
 #-------- Payload to API ---------------
         payload = {
@@ -136,7 +135,10 @@ def show_taxikollen():
         st.session_state.predicted_price = float(predicted_price) if predicted_price is not None else None
         st.session_state.dest_latlon = dest_latlon
 
-        st.info(f"Predicted price: {predicted_price:.2f} SEK")
+    if st.session_state.get("km") is not None:
+        st.info(f"Avstånd (fågelvägen): {st.session_state['km']:.2f} km")
+    if st.session_state.get("predicted_price") is not None:
+        st.success(f"Predicted price: {st.session_state['predicted_price']:.2f} SEK")
     
         #------- Live map ------------
     st.markdown("### Göteborg") 

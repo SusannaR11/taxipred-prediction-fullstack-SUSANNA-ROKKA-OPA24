@@ -1,0 +1,2 @@
+recursive-include src/taxipred/data *.csv
+recursive-include src/taxipred/models *.joblib

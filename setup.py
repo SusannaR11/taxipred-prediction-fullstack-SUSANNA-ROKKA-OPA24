@@ -10,9 +10,10 @@ setup(
     description="this package contains taxipred app",
     author="Susanna Rokka",
     author_email="susanna.rokka@student.nbi-handelsakademin.se",
-    install_requires=["streamlit", "pandas", "fastapi", "uvicorn"],
+    install_requires=["streamlit", "pandas", "fastapi", "uvicorn", "numpy", "joblib", "scikit-learn", "geopy", "requests", "folium", "streamlit-option-menu", "streamlit-folium", "streamlit-geolocation"],
+    include_package_data=True,
     package_dir={"": "src"},
-    package_data={"taxipred": ["data/*.csv"]},
+    package_data={"taxipred": ["data/*.csv", "models/*.joblib"]},
     packages=find_packages(),
 )
 

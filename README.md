@@ -1,5 +1,3 @@
-# taxipred-prediction-fullstack-SUSANNA-ROKKA-OPA24
-
 # Taxikollen – ML Taxi Price Predictor & BI Uplift Tool (PoC)
 
 _Project in Data Engineering and Object Oriented Programming with AI_
@@ -54,7 +52,7 @@ macOS/Linux:
 ```cd```src/taxipred/frontend
 ```streamlit run dasboard.py```
 
-## Roadmap / Future Work
+## 🛣️ Roadmap / Future Work
 Planned improvements and next steps for Taxikollen:
 - **Google Maps Integration** -> interactive route mapping for trips
 - **Optimized Map Funciton** -> improve stability & route visualization

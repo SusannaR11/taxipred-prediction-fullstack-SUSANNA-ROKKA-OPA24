@@ -5,10 +5,11 @@ import json
 import joblib
 from pydantic import BaseModel, Field
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 CSV_PATH = TAXI_CSV_PATH / "df_BI.csv"
 
+GRADED_COLS = ["Traffic_Conditions_Num", "Time_of_Day_Num"]
 BI_BINARY_COLS = ["IsBusinessHour", "IsRain", "IsSnow", "IsWeekend"]
 TARGET_COL = "Trip_Price"
 
@@ -73,15 +74,6 @@ DEFAULTS = {
 class PredictionOutput(BaseModel):
     predicted_price: float = Field(ge=0)
 
-# class TaxiPricePredictor:
-#     def __init__(self, model_path: str):
-#         self.model = joblib.load(model_path)
-    
-#     def predict(self, request: FareRequest) -> float:
-#         # convert pydantic model -> dict (json) -> dataframe(????)
-#         X = pd.DataFrame([request.dict()])
-#         y_pred = self.model.predict(X)[0]
-#         return float(y_pred)
 
 # # ----- BI data-processing ------
 # ------ uplifts: rain, snow, weekend, businesshour
@@ -89,8 +81,9 @@ class BIUplifts:
     def __init__(self, csv_path: Path = CSV_PATH):
         df = pd.read_csv(csv_path)
         df.columns = [str(c).strip() for c in df.columns]
-        self.general_mean = float(df[TARGET_COL].mean())
+        #self.general_mean = float(df[TARGET_COL].mean())
 
+        # compute binary uplifts
         self.means: Dict[str, Dict[int, float]] = {}
         self.uplift_percent: Dict[str, float] = {}
 
@@ -102,17 +95,18 @@ class BIUplifts:
             percent = ((m1-m0) / m0) * 100.0
             self.uplift_percent[col] = float(((m1-m0)/m0)*100.0)
 
+        #compute graded cols:
     def stats(self) -> Dict:
         return{
-            "general_mean_price": round(self.general_mean, 2),
+            #"general_mean_price": round(self.general_mean, 2),
             "means": {k: {str(k2): round(v2, 2) for k2, v2 in v.items()} for k, v in self.means.items()},
             "uplift_percent":{k: round(v,2) for k,v in self.uplift_percent.items()},
         }
     
     def apply(self, base_price: float, flags: Dict[str, int]) -> Tuple[Dict[str, float],float, float]:
         applied = {col: (self.uplift_percent[col] if int(flags.get(col, 0)) == 1 else 0.0) for col in BI_BINARY_COLS}
-        adjust = float (base_price)
 
+        adjust = float (base_price)
         for percent in applied.values():
             if percent:
                 adjust *= (1.0 + percent / 100.0)

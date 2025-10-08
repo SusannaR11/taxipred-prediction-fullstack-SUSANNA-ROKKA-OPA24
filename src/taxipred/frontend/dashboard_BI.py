@@ -191,7 +191,7 @@ def show_bi():
 #----- BI uplift toggles --------
     stats = read_api_endpoint("/api/taxi/bi").json()
     st.markdown("## Rörelse i % på taxipris:")
-    st.markdown(f"#### Genomsnittligt taxipris: {stats['general_mean_price']:.2f} SEK (enligt data)")
+    #st.markdown(f"#### Genomsnittligt taxipris: {stats#['general_mean_price']:.2f} SEK (enligt data)")
 
     col_a, col_b, col_c, col_d = st.columns(4)
     with col_a: st.metric("Regn", f"{stats['uplift_percent']['IsRain']:.2f}%")

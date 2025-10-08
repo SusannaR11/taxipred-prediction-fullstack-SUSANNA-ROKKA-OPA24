@@ -39,7 +39,7 @@ FEATURE_ORDER = [
 
 class BIApplyRequest(BaseModel):
     base_price: float
-    IsBusinesssHour: int=0
+    IsBusinessHour: int=0
     IsRain: int= 0
     IsSnow: int= 0
     IsWeekend: int = 0
@@ -55,6 +55,11 @@ class BIApplyResponse(BaseModel):
 @app.get("/api/taxi/")
 def read_taxi_data():
     return taxi_data.to_json()
+
+# method to render bi page / metadata
+@app.get("/api/taxi/bi")
+def bi_stats():
+    return bi_uplifts.stats()
 
 @app.get("/api/taxi/rates")
 def rates(passengers: int):
@@ -76,17 +81,21 @@ def predicted_price(payload: FareRequest):
     #prediction = rf.predict(data_to_predict) # removed
     #return{"predicted_price": prediction[0]} # removed
     return {"predicted_price": y_sek}
-  
+
+# for computing the BI actions, uplift etc user action 
 @app.post("/api/taxi/bi", response_model=BIApplyResponse)
 def bi_apply(req: BIApplyRequest):
     flags = {
-        "IsBusinesssHour": req.IsBusinesssHour,
+        "IsBusinessHour": req.IsBusinessHour,
         "IsRain": req.IsRain,
         "IsSnow": req.IsSnow,
         "IsWeekend": req.IsWeekend,
 
     }
-    applied, total_percent, adjusted = bi_uplifts.apply(base_price=req.base_price, flags=flags)
+    applied, total_percent, adjusted = bi_uplifts.apply(
+        base_price=req.base_price, 
+        flags=flags,
+    )
     return BIApplyResponse(
         base_price=req.base_price,
         uplift_total_percent=total_percent,
@@ -94,13 +103,4 @@ def bi_apply(req: BIApplyRequest):
         applied=applied,
     )
         
-
-
-
-
-#@app.get("api/taxi/predict/")
-#async def bi_opportunities():
-#    return bi_opportunities.to_json()
-
-#@app.post("api/taxi/predict/bi")
 

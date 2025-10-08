@@ -114,54 +114,6 @@ class BIUplifts:
         return applied, round(uplift_total_percent, 2), round(adjust, 2)
 
 
-
-
-
-
-# # smart features and outlier analysis:
-# class TaxiPriceBI:
-#     def __init__(self, df: pd.DataFrame):
-#         self.df = df 
-#         self._baseline = float(df["Trip_Price"].mean())
-    
-#     def baseline(self) -> float:
-#         return self._baseline
-    
-#     def uplift_request(self, feature: str, value) -> dict:
-#         base = self._baseline
-#         avg = self.df[self.df[feature] == value]["Tripe_Price"].mean()
-#         pct = ((avg - base) / base) *100
-#         return{
-#             "feature": feature,
-#             "value": value,
-#             "avg_fare": round(float(avg),2),
-#             "baseline": round(base, 2),
-#             "uplift_pct": round(float(pct), 2),
-#             "count": int((self.df[feature] == value).sum())
-#         }
-
-
-#     def uplift_combo(self, conditions: dict) -> dict:
-#         #Average fare for multiple conditions at once.
-#         base = self._baseline
-#         df_f = self.df.copy()
-#         for col, val in conditions.items():
-#             df_f = df_f[df_f[col] == val]
-#         avg = df_f["Trip_Price"].mean()
-#         pct = ((avg - base) / base) * 100
-#         return {
-#             "conditions": conditions,
-#             "avg_fare": round(float(avg), 2),
-#             "baseline": round(base, 2),
-#             "uplift_pct": round(float(pct), 2),
-#             "count": int(len(df_f)),
-#         }
-
-#     def top_fare_outliers(self, n=5):
-#         return self.df.nlargest(n, "Trip_Price").to_dict(orient="records")
-
-
-
 if __name__ == "__main__":
     data = TaxiData()
     print(data.to_json())
